@@ -3,12 +3,6 @@ import chess
 import chess.pgn
 import random
 
-# Set up
-board = chess.Board()
-pgn = open("PGN/Vienna Gambit.pgn")
-opening = chess.pgn.read_game(pgn)
-
-
 # Functions
 ## Randomly select one variation
 def process_node(node):
@@ -23,6 +17,7 @@ def process_node(node):
     return expected_variation
 
 def engine_turn(self):
+    print(f'engine : {expected_moves[self.move_number - 1]}')
     try:
         self.board_widget.play_move(expected_moves[self.move_number - 1])
         self.move_number += 1
@@ -74,15 +69,16 @@ class MainWindow(QMainWindow):
         print("User played:", move)
         try:
             expected_move = expected_moves[self.move_number - 1]
+            print(f'Expected_move : {expected_move}')
+            print(f'move_number : {self.move_number}')
         except IndexError:
             self.move_number = 1
-            board.reset()
+            self.board_widget.set_board(chess.Board())
             
-
-
         if self.move_number%2 != 0:
             if move == expected_move:
                 self.statusBar().showMessage("✅ Correct move!", 2000)
+                self.move_number += 1
                 engine_turn(self)
             else:
                 self.statusBar().showMessage("❌ Wrong move!", 2000)
@@ -95,13 +91,23 @@ class MainWindow(QMainWindow):
             expected_move = expected_moves[self.move_number - 1]
             print(self.move_number,expected_move)
             engine_turn(self)
+            engine_turn(self)
         except IndexError:
             self.move_number = 1
-            board.reset()
+            self.board_widget.set_board(chess.Board())
 
 # Main
 if __name__ == "__main__":
+    # Set up
+    global expected_moves
+
+    board = chess.Board()
+    pgn = open("PGN/Vienna Gambit.pgn")
+    opening = chess.pgn.read_game(pgn)
+
     expected_moves = process_node(opening)
+
+    # App
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
