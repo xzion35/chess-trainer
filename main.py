@@ -3,28 +3,37 @@ import chess
 import chess.pgn
 import random
 
-# Initialisation
+# Set up
 board = chess.Board()
 pgn = open("PGN/Vienna Gambit.pgn")
 opening = chess.pgn.read_game(pgn)
 
 
 # Functions
-## Best move ?
+## Randomly select one variation
 def process_node(node):
     expected_variation = []
     while not node.is_end():
-        # Get all possible next moves (variations)
+        # Get all possible next moves
         variations = node.variations
         if not variations:
             break  # no more moves
-        # Randomly select one variation
         node = random.choice(variations)
         expected_variation.append(node.move)
     return expected_variation
 
+def engine_turn(self):
+    try:
+        self.board_widget.play_move(expected_moves[self.move_number - 1])
+        self.move_number += 1
+    except:
+        self.move_number = 1
+        self.board_widget.set_board(chess.Board())
+        self.statusbar.showMessage("🔄 New variation loaded!", 2000)
+
+
 # GUI
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
 from chess_widgets import BoardWidget
 
 class MainWindow(QMainWindow):
@@ -37,12 +46,14 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(container)
 
         self.board_widget = BoardWidget()
-        self.label = QLabel("Play the correct move!")
+        self.statusbar = self.statusBar()
+        self.hint_button = QPushButton("Show Move")
 
         layout.addWidget(self.board_widget)
-        layout.addWidget(self.label)
+        layout.addWidget(self.hint_button)
 
         self.setCentralWidget(container)
+        self.hint_button.clicked.connect(self.show_move)
 
         # Game state
         self.board = chess.Board()
@@ -51,27 +62,44 @@ class MainWindow(QMainWindow):
         # Connect signal
         self.board_widget.move_played.connect(self.on_move_played)
 
-    def on_move_played(self, move: chess.Move, move_info: dict):
-        print("User played:", move)
-        expected_move = expected_moves[self.move_number - 1]
-        print(self.move_number,expected_move)
-        if self.move_number%2 != 0:
-            if str(move) == str(expected_move):
-                self.label.setText("✅ Correct move!")
-                # Continue game logic here (set next expected move, etc.)
-                self.move_number += 1
-                self.board_widget.play_move(expected_moves[self.move_number - 1])
-                self.move_number += 1
-            else:
-                self.label.setText("❌ Wrong move!")
+        # Style
+        self.statusBar().setStyleSheet("""
+                                     font-size: 24px;
+                                     """)
 
+
+    def on_move_played(self, move: chess.Move, move_info: dict):
+        if not move_info.get("interactive"):
+            return
+        print("User played:", move)
+        try:
+            expected_move = expected_moves[self.move_number - 1]
+        except IndexError:
+            self.move_number = 1
+            board.reset()
+            
+
+
+        if self.move_number%2 != 0:
+            if move == expected_move:
+                self.statusBar().showMessage("✅ Correct move!", 2000)
+                engine_turn(self)
+            else:
+                self.statusBar().showMessage("❌ Wrong move!", 2000)
                 # Undo move visually
                 self.board_widget.undo_move()
 
+    def show_move(self):
+        try:
+            print(self.move_number)
+            expected_move = expected_moves[self.move_number - 1]
+            print(self.move_number,expected_move)
+            engine_turn(self)
+        except IndexError:
+            self.move_number = 1
+            board.reset()
 
-
-
-
+# Main
 if __name__ == "__main__":
     expected_moves = process_node(opening)
     app = QApplication(sys.argv)
