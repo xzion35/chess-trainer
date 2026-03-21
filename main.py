@@ -7,24 +7,17 @@ import random
 ## Randomly select one variation
 def process_node(node):
     expected_variation = []
-    while not node.is_end():
-        # Get all possible next moves
-        variations = node.variations
-        if not variations:
-            break  # no more moves
-        node = random.choice(variations)
-        expected_variation.append(node.move)
-    return expected_variation
-
-def engine_turn(self):
-    print(f'engine : {expected_moves[self.move_number - 1]}')
     try:
-        self.board_widget.play_move(expected_moves[self.move_number - 1])
-        self.move_number += 1
-    except:
-        self.move_number = 1
-        self.board_widget.set_board(chess.Board())
-        self.statusbar.showMessage("🔄 New variation loaded!", 2000)
+        while not node.is_end():
+            # Get all possible next moves
+            variations = node.variations
+            if not variations:
+                break  # no more moves
+            node = random.choice(variations)
+            expected_variation.append(node.move)
+    except AttributeError:
+        return expected_variation
+    return expected_variation
 
 
 # GUI
@@ -35,9 +28,12 @@ from chess_widgets import BoardWidget
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Chess Trainer")
-
+        self.expected_moves = []
+        self.expected_move = None
+        self.opening = None
+        
         # Layout
+        self.setWindowTitle("Chess Trainer")
         self.create_menu()
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -79,61 +75,69 @@ class MainWindow(QMainWindow):
         reset_action.triggered.connect(self.reset_board)
         file_menu.addAction(reset_action)
     
+    def engine_turn(self):
+        try:
+            expected_move = self.expected_moves[self.move_number - 1]
+            self.board_widget.play_move(expected_move)
+            self.move_number += 1
+            if self.move_number >= len(self.expected_moves) and len(self.expected_moves) !=0:
+                self.statusBar().showMessage("🎉 Line completed!", 3000)
+                self.reset_board()
+        except IndexError:
+            self.reset_board()
+
     def open_pgn(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open PGN File", "", "PGN Files (*.pgn);;All Files (*)")
         if file_path:
             print("Loaded PGN:", file_path)
-            # TODO: load your game here
+            with open(file_path) as pgn:
+                self.opening = chess.pgn.read_game(pgn)
+            self.expected_moves = process_node(self.opening)
+            self.reset_board()
 
     def reset_board(self):
-        print("Board reset")
-        # TODO: reset your chessboard state
-
+        self.move_number = 1
+        self.board_widget.set_board(chess.Board())
+        self.expected_moves = process_node(self.opening)
 
     def on_move_played(self, move: chess.Move, move_info: dict):
         if not move_info.get("interactive"):
             return
-        print("User played:", move)
         try:
-            expected_move = expected_moves[self.move_number - 1]
-            print(f'Expected_move : {expected_move}')
-            print(f'move_number : {self.move_number}')
+            self.expected_move = self.expected_moves[self.move_number - 1]
         except IndexError:
-            self.move_number = 1
-            self.board_widget.set_board(chess.Board())
-            
+            pass
+        print("User played:", move)
+        print("Expected Move:", self.expected_move)
         if self.move_number%2 != 0:
-            if move == expected_move:
-                self.statusBar().showMessage("✅ Correct move!", 2000)
-                self.move_number += 1
-                engine_turn(self)
+            print(f'self.move_number = {self.move_number} taille = {len(self.expected_moves)}')
+            if self.move_number >= len(self.expected_moves) and len(self.expected_moves) !=0:
+                self.statusBar().showMessage("🎉 Line completed!", 3000)
+                self.reset_board()
             else:
-                self.statusBar().showMessage("❌ Wrong move!", 2000)
-                # Undo move visually
-                self.board_widget.undo_move()
+                # print(f'Expected_move : {self.expected_move}')
+                if move == self.expected_move:
+                    self.statusBar().showMessage("✅ Correct move!", 2000)
+                    self.move_number += 1
+                    self.engine_turn()
+                elif len(self.expected_moves) == 0:
+                    self.reset_board()
+                else:
+                    self.statusBar().showMessage("❌ Wrong move!", 2000)
+                    # Undo move visually
+                    self.board_widget.undo_move()
+        
 
     def show_move(self):
         try:
-            print(self.move_number)
-            expected_move = expected_moves[self.move_number - 1]
-            print(self.move_number,expected_move)
-            engine_turn(self)
-            engine_turn(self)
+            self.engine_turn()
+            self.engine_turn()
         except IndexError:
-            self.move_number = 1
-            self.board_widget.set_board(chess.Board())
+            pass
+
 
 # Main
 if __name__ == "__main__":
-    # Set up
-    global expected_moves
-
-    board = chess.Board()
-    pgn = open("PGN/Vienna Gambit.pgn")
-    opening = chess.pgn.read_game(pgn)
-
-    expected_moves = process_node(opening)
-
     # App
     app = QApplication(sys.argv)
     window = MainWindow()

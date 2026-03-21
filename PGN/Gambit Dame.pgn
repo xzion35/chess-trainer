@@ -1,0 +1,12 @@
+[Event "?"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "?"]
+[Black "?"]
+[Result "*"]
+[Start "[0,0,0,0]"]
+[Orientation "white"]
+
+1. d4 d5 2. c4 {[%cal Gd5c4,Ge2e3]} dxc4 3. e3 Nf6  (3... b5  4. a4 bxa4  (4... c6  5. axb5 cxb5 6. Qf3 Nc6 7. Qxc6+ Bd7 8. Qf3)  (4... a6  5. axb5 Bb7 6. Bxc4 axb5 7. Rxa8 Bxa8 8. Bxb5+ c6 9. Bc4 e6 10. Nf3 Bb4+ 11. Bd2 Bxd2+ 12. Nbxd2 Nf6 13. O-O O-O)  (4... b4  5. Bxc4 a5 6. Qf3 c6 7. Qxf7+ Kd7 8. Be6+ Kc7 9. Qf4+ Kb7 10. Bxc8+ Qxc8) 5. Qxa4+ Bd7 6. Qxc4 Nf6 7. Nf3 e6 8. Nc3 Nc6 9. Bd3 Bb4 10. O-O Bxc3 11. bxc3 O-O)  (3... e6  ) 4. Bxc4 e6  (4... Nc6  5. Nf3 e6 6. O-O Bd6 7. Nc3) 5. Nf3 Bb4+ 6. Bd2 Bxd2+ 7. Nbxd2 O-O 8. O-O *
+
