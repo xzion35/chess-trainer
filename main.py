@@ -28,7 +28,8 @@ def engine_turn(self):
 
 
 # GUI
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog
+from PySide6.QtGui import QAction
 from chess_widgets import BoardWidget
 
 class MainWindow(QMainWindow):
@@ -37,6 +38,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Chess Trainer")
 
         # Layout
+        self.create_menu()
         container = QWidget()
         layout = QVBoxLayout(container)
 
@@ -61,6 +63,31 @@ class MainWindow(QMainWindow):
         self.statusBar().setStyleSheet("""
                                      font-size: 24px;
                                      """)
+    def create_menu(self):
+        menu_bar = self.menuBar()
+
+        # File menu
+        file_menu = menu_bar.addMenu("File")
+
+        # Open PGN action
+        open_action = QAction("Open PGN", self)
+        open_action.triggered.connect(self.open_pgn)
+        file_menu.addAction(open_action)
+
+        # Reset Board action
+        reset_action = QAction("Reset Board", self)
+        reset_action.triggered.connect(self.reset_board)
+        file_menu.addAction(reset_action)
+    
+    def open_pgn(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open PGN File", "", "PGN Files (*.pgn);;All Files (*)")
+        if file_path:
+            print("Loaded PGN:", file_path)
+            # TODO: load your game here
+
+    def reset_board(self):
+        print("Board reset")
+        # TODO: reset your chessboard state
 
 
     def on_move_played(self, move: chess.Move, move_info: dict):
