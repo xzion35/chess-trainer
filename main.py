@@ -5,7 +5,7 @@ import chess.pgn
 import random
 
 # GUI
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QHBoxLayout, QLabel
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QUrl, QTimer
 from PySide6.QtMultimedia import QSoundEffect
@@ -35,11 +35,23 @@ class MainWindow(QMainWindow):
         # --- Layout ---
         container = QWidget()
         layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 10, 0, 10)
+        layout.setSpacing(0)
         self.board_widget = BoardWidget()
-        self.statusbar = self.statusBar()
+
+        # Bottom bar with hint button, status label and progress counter
+        bottom_bar = QHBoxLayout()
         self.hint_button = QPushButton("Show Move")
-        layout.addWidget(self.board_widget)
-        layout.addWidget(self.hint_button)
+        self.status_label = QLabel("")
+        self.progress_label = QLabel("0/0")
+        bottom_bar.addWidget(self.status_label)
+        bottom_bar.addWidget(self.hint_button)
+        bottom_bar.addWidget(self.progress_label)
+        bottom_bar.setSpacing(30)
+        self.hint_button.setFixedWidth(150)
+
+        layout.addWidget(self.board_widget, stretch=1)
+        layout.addLayout(bottom_bar)
         self.setCentralWidget(container)
         self.hint_button.clicked.connect(self.show_move)
 
@@ -55,8 +67,14 @@ class MainWindow(QMainWindow):
         self.board_widget.move_played.connect(self.on_move_played)
 
         # --- Styles ---
-        self.statusBar().setStyleSheet("""
-                                     font-size: 24px;
+        self.status_label.setStyleSheet("""
+                                     font-size: 20px;
+                                     """)
+        self.hint_button.setStyleSheet("""
+                                     font-size: 20px;
+                                     """)
+        self.progress_label.setStyleSheet("""
+                                     font-size: 20px;
                                      """)
     # Menu on top of the App
     def create_menu(self):
@@ -99,6 +117,7 @@ class MainWindow(QMainWindow):
             self.choose_variation()
             self.expected_move = self.variation[self.move_number - 1]
             self.reset_board()
+            self.progress_label.setText(f"0/{len(self.variations)}")
 
     def extract_variations(self):
         """
@@ -162,7 +181,7 @@ class MainWindow(QMainWindow):
         if not move_info.get("interactive"):
             return
         if not self.variation:
-            self.statusBar().showMessage("⚠️ Load a PGN first!", 3000)
+            self.status_label.setText("⚠️ Load a PGN file first!")
             self.board_widget.undo_move()
             return
         try:
@@ -176,11 +195,11 @@ class MainWindow(QMainWindow):
 
         if move.uci() == expected_uci:
             print("Correct move pushed")
-            self.statusBar().showMessage("✅ Correct move!", 2000)
+            self.status_label.setText("✅ Correct move!")
             self.move_number += 1
             QTimer.singleShot(200, self.engine_turn)
         else:
-            self.statusBar().showMessage("❌ Wrong move!", 2000)
+            self.status_label.setText("❌ Wrong move!")
             self.board_widget.undo_move()
             
     def show_move(self):
@@ -189,7 +208,7 @@ class MainWindow(QMainWindow):
         The hint button is temporarily disabled to prevent spamming.
         """
         if not self.variation:
-            self.statusBar().showMessage("⚠️ Load a PGN first!", 3000)
+            self.status_label.setText("⚠️ Load a PGN file first!")
             return
         # Disable button and Re-enable button after 1 second
         self.hint_button.setEnabled(False)
@@ -215,7 +234,7 @@ class MainWindow(QMainWindow):
         if self.move_number >= len(self.variation):
             self.streak += 1
             if not self.variations:
-                self.statusBar().showMessage("🎉 Training completed!", 3000)
+                self.status_label.setText("🎉 Training completed!")
                 # Disable button and Re-enable button after 5 seconds
                 self.hint_button.setEnabled(False)
                 QTimer.singleShot(5000, lambda: self.hint_button.setEnabled(True))
@@ -223,11 +242,12 @@ class MainWindow(QMainWindow):
                 self.variation = None # Prevent further interaction until a new PGN is loaded
             else:
                 self.choose_variation()
-                self.statusBar().showMessage("🎉 Line completed!", 3000)
+                self.status_label.setText("🎉 Line completed!")
                 # Disable button and Re-enable button after 5 seconds
                 self.hint_button.setEnabled(False)
                 QTimer.singleShot(5000, lambda: self.hint_button.setEnabled(True))
                 QTimer.singleShot(5000, self.reset_board)
+        self.progress_label.setText(f"{self.streak}/{self.streak + len(self.variations)}")
             
 
 
