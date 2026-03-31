@@ -120,17 +120,15 @@ class MainWindow(QMainWindow):
     def engine_turn(self):
         if not self.variation or not self.opening:
             return
+
         try:
             expected_uci = self.variation[self.move_number - 1]
             move = self.board.parse_uci(expected_uci)  # convert to Move
             print(f'Engine move : {move}')
-            # self.play_move_sound(move)
+            self.play_move_sound(move)
             self.board_widget.play_move(move)
             self.move_number += 1
-
-            if self.move_number > len(self.variation):
-                self.statusBar().showMessage("🎉 Line completed!", 3000)
-                QTimer.singleShot(5000, self.reset_board)
+            self.check_for_completion()
         except IndexError:
             self.reset_board()
             
@@ -178,6 +176,9 @@ class MainWindow(QMainWindow):
         if not self.variation:
             self.statusBar().showMessage("⚠️ Load a PGN first!", 3000)
             return
+        # Disable button and Re-enable button after 1 second
+        self.hint_button.setEnabled(False)
+        QTimer.singleShot(1000, lambda: self.hint_button.setEnabled(True))
         try:
             self.engine_turn()
             # If there are still moves left, schedule the next move after animation
@@ -185,6 +186,26 @@ class MainWindow(QMainWindow):
                 QTimer.singleShot(500, self.engine_turn) # add small delay to let the animation
         except IndexError:
             pass
+
+    def check_for_completion(self):
+        if self.move_number >= len(self.variation):
+            self.choose_variation()
+            self.streak += 1
+            if self.streak == len(self.variations):
+                self.statusBar().showMessage("🎉 Training completed!", 3000)
+                # Disable button and Re-enable button after 5 seconds
+                self.hint_button.setEnabled(False)
+                QTimer.singleShot(5000, lambda: self.hint_button.setEnabled(True))
+                QTimer.singleShot(5000, self.reset_board)
+                # Force user to load an other PGN
+                self.variation = None
+            else:
+                self.statusBar().showMessage("🎉 Line completed!", 3000)
+                # Disable button and Re-enable button after 5 seconds
+                self.hint_button.setEnabled(False)
+                QTimer.singleShot(5000, lambda: self.hint_button.setEnabled(True))
+                QTimer.singleShot(5000, self.reset_board)
+            
 
 # Main
 if __name__ == "__main__":  
