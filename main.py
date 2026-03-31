@@ -20,6 +20,7 @@ class MainWindow(QMainWindow):
         self.variations = [] # List of all possible variations
         self.expected_move = None
         self.opening = None
+        self.board = chess.Board()
         self.user_color = "white" # default value
         self.move_number = 1
         self.streak = 0
@@ -167,7 +168,7 @@ class MainWindow(QMainWindow):
             print("Correct move pushed")
             self.statusBar().showMessage("✅ Correct move!", 2000)
             self.move_number += 1
-            self.engine_turn()
+            QTimer.singleShot(200, self.engine_turn)
         else:
             self.statusBar().showMessage("❌ Wrong move!", 2000)
             self.board_widget.undo_move()
@@ -178,7 +179,12 @@ class MainWindow(QMainWindow):
             return
         # Disable button and Re-enable button after 1 second
         self.hint_button.setEnabled(False)
-        QTimer.singleShot(1000, lambda: self.hint_button.setEnabled(True))
+        def safe_unlock():
+            # Enable buton only if it's not the end of the variation
+            if self.move_number < len(self.variation) and self.hint_button.isEnabled() == False:
+                self.hint_button.setEnabled(True)
+                print(f'move_n : {self.move_number}, taille {len(self.variation)}')
+        QTimer.singleShot(1000, safe_unlock)
         try:
             self.engine_turn()
             # If there are still moves left, schedule the next move after animation
@@ -189,9 +195,8 @@ class MainWindow(QMainWindow):
 
     def check_for_completion(self):
         if self.move_number >= len(self.variation):
-            self.choose_variation()
             self.streak += 1
-            if self.streak == len(self.variations):
+            if not self.variations:
                 self.statusBar().showMessage("🎉 Training completed!", 3000)
                 # Disable button and Re-enable button after 5 seconds
                 self.hint_button.setEnabled(False)
@@ -200,6 +205,7 @@ class MainWindow(QMainWindow):
                 # Force user to load an other PGN
                 self.variation = None
             else:
+                self.choose_variation()
                 self.statusBar().showMessage("🎉 Line completed!", 3000)
                 # Disable button and Re-enable button after 5 seconds
                 self.hint_button.setEnabled(False)
