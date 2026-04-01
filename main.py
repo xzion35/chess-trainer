@@ -1,5 +1,6 @@
 # Import
 import sys
+import os
 import chess
 import chess.pgn
 import random
@@ -10,6 +11,12 @@ from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QUrl, QTimer
 from PySide6.QtMultimedia import QSoundEffect
 from chess_widgets import BoardWidget
+
+def resource_path(relative_path):
+    """Get the absolute path to a resource, works for dev and PyInstaller."""
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 # MainWindow for GUI
 class MainWindow(QMainWindow):
@@ -29,7 +36,7 @@ class MainWindow(QMainWindow):
         
         # --- Window setup ---
         self.setWindowTitle("Chess Trainer")
-        self.setWindowIcon(QIcon("Logos/logo1_white.png"))
+        self.setWindowIcon(QIcon(resource_path("Logos/logo1_white.png")))
         self.create_menu()
 
         # --- Layout ---
@@ -57,9 +64,9 @@ class MainWindow(QMainWindow):
 
         # --- Sound effects ---
         self.move_sound = QSoundEffect()
-        self.move_sound.setSource(QUrl.fromLocalFile("Sound/Move.wav"))
+        self.move_sound.setSource(QUrl.fromLocalFile(resource_path("Sound/Move.wav")))
         self.capture_sound = QSoundEffect()
-        self.capture_sound.setSource(QUrl.fromLocalFile("Sound/Capture.wav"))
+        self.capture_sound.setSource(QUrl.fromLocalFile(resource_path("Sound/Capture.wav")))
         self.move_sound.setVolume(0.5)
         self.capture_sound.setVolume(0.5)
         
