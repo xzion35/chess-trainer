@@ -1,3 +1,6 @@
+# Chess Trainer - A chess opening trainer
+# Copyright (C) 2026  Dylan Mercier
+
 # Import
 import sys
 import os
@@ -36,7 +39,7 @@ class MainWindow(QMainWindow):
         
         # --- Window setup ---
         self.setWindowTitle("Chess Trainer")
-        self.setWindowIcon(QIcon(resource_path("Logos/logo1_white.png")))
+        self.setWindowIcon(QIcon(resource_path("Logos/logo_white.png")))
         self.create_menu()
 
         # --- Layout ---
@@ -196,11 +199,11 @@ class MainWindow(QMainWindow):
         except IndexError:
             return
 
-        self.play_move_sound(move)
         print("Expected Move:", expected_uci)
         print("User played:", move)
 
         if move.uci() == expected_uci:
+            self.play_move_sound(move)
             print("Correct move pushed")
             self.status_label.setText("✅ Correct move!")
             self.move_number += 1
@@ -242,19 +245,22 @@ class MainWindow(QMainWindow):
             self.streak += 1
             if not self.variations:
                 self.status_label.setText("🎉 Training completed!")
-                # Disable button and Re-enable button after 5 seconds
-                self.hint_button.setEnabled(False)
-                QTimer.singleShot(5000, lambda: self.hint_button.setEnabled(True))
-                QTimer.singleShot(5000, self.reset_board)
+                self.disable_ui_temporarily()
                 self.variation = None # Prevent further interaction until a new PGN is loaded
             else:
                 self.choose_variation()
                 self.status_label.setText("🎉 Line completed!")
-                # Disable button and Re-enable button after 5 seconds
-                self.hint_button.setEnabled(False)
-                QTimer.singleShot(5000, lambda: self.hint_button.setEnabled(True))
-                QTimer.singleShot(5000, self.reset_board)
+                self.disable_ui_temporarily()
+                
         self.progress_label.setText(f"{self.streak}/{self.streak + len(self.variations)}")
+    
+    def disable_ui_temporarily(self):
+        self.hint_button.setEnabled(False)
+        self.board_widget.setEnabled(False)
+        QTimer.singleShot(5000, lambda: self.hint_button.setEnabled(True))
+        QTimer.singleShot(5000, lambda: self.board_widget.setEnabled(True))
+        QTimer.singleShot(5000, self.reset_board)
+
             
 
 
