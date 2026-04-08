@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
         self.user_color = "white" # Side the user is playing
         self.move_number = 1      # Current move index in the variation (1-based)
         self.streak = 0           # Number of variations completed in a row
+        self.mistakes = 0         # Number of mistakes during 
         
         # --- Window setup ---
         self.setWindowTitle("Chess Trainer")
@@ -52,11 +53,13 @@ class MainWindow(QMainWindow):
         # Bottom bar with hint button, status label and progress counter
         bottom_bar = QHBoxLayout()
         self.hint_button = QPushButton("Show Move")
-        self.status_label = QLabel("")
+        self.status_label = QLabel()
         self.progress_label = QLabel("0/0")
+        self.mistakes_label = QLabel()
         bottom_bar.addWidget(self.status_label)
         bottom_bar.addWidget(self.hint_button)
         bottom_bar.addWidget(self.progress_label)
+        bottom_bar.addWidget(self.mistakes_label)
         bottom_bar.setSpacing(30)
         self.hint_button.setFixedWidth(150)
 
@@ -64,6 +67,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(bottom_bar)
         self.setCentralWidget(container)
         self.hint_button.clicked.connect(self.show_move)
+        self.hint_button.setEnabled(False)
 
         # --- Sound effects ---
         self.move_sound = QSoundEffect()
@@ -85,6 +89,10 @@ class MainWindow(QMainWindow):
                                      """)
         self.progress_label.setStyleSheet("""
                                      font-size: 20px;
+                                     """)
+        self.mistakes_label.setStyleSheet("""
+                                     font-size: 20px;
+                                     color: red;
                                      """)
     # Menu on top of the App
     def create_menu(self):
@@ -113,9 +121,14 @@ class MainWindow(QMainWindow):
         """Open a PGN file, parse its variations, and start the training session."""
         file_path, _ = QFileDialog.getOpenFileName(self, "Open PGN File", "", "PGN Files (*.pgn);;All Files (*)")
         if file_path:
-            print("Loaded PGN:", file_path)
             with open(file_path) as pgn:
-                self.opening = chess.pgn.read_game(pgn)
+                try:
+                    print("Loaded PGN:", file_path)
+                    self.opening = chess.pgn.read_game(pgn)
+                except:
+                    self.status_label.setText("⚠️ Incorect file type")
+                    return
+
 
             # Determine which side the user plays from the PGN headers
             orientation_tag = self.opening.headers.get("Orientation", "white").lower()
@@ -123,15 +136,21 @@ class MainWindow(QMainWindow):
             print(f'User color : {self.user_color}')
 
             self.variations = []
+            self.mistakes = 0
+            self.streak = 0
+            self.hint_button.setEnabled(True)
+            self.mistakes_label.setText("")
+            self.status_label.setText("")
             self.extract_variations()
+            self.total_variations = len(self.variations)
             self.choose_variation()
             self.expected_move = self.variation[self.move_number - 1]
-            self.reset_board()
-            self.progress_label.setText(f"0/{len(self.variations)}")
+            self.progress_label.setText(f"0/{self.total_variations}")
+            self.reset_board()  
 
     def extract_variations(self):
         """
-        Traverse the PGN game tree and collect all leaf-to-root variations.
+        Traverse the PGN game tree and collect all root-to-leaf variations.
         Each variation is stored as a list of UCI move strings.
         """
         self.variations = []  # reset
@@ -150,38 +169,6 @@ class MainWindow(QMainWindow):
         random_id = random.randrange(len(self.variations))
         self.variation = self.variations.pop(random_id)
         print("Variation selected")
-        
-    def engine_turn(self):
-        """Play the expected move from the current variation."""
-        if not self.variation or not self.opening:
-            return
-        try:
-            expected_uci = self.variation[self.move_number - 1]
-            move = self.board.parse_uci(expected_uci)  # convert to Move
-            print(f'Engine move : {move}')
-            self.play_move_sound(move)
-            self.board_widget.play_move(move)
-            self.move_number += 1
-            self.check_for_completion()
-        except IndexError:
-            self.reset_board()
-            
-    def reset_board(self):
-        """Reset the board to its starting position and play the first engine move if needed."""
-        self.move_number = 1
-        self.board = chess.Board()
-        self.board_widget.set_board(self.board)
-        
-        if self.user_color == "white":
-            self.board_widget.set_flipped(False)
-        else:
-            self.board_widget.set_flipped(True)
-        
-        # If the user plays black, the engine opens with the first move
-        if self.user_color == "black" and self.variation:
-            self.engine_turn()
-        print("Board Reset")
-
 
     def on_move_played(self, move: chess.Move, move_info: dict):
         """
@@ -207,61 +194,104 @@ class MainWindow(QMainWindow):
             print("Correct move pushed")
             self.status_label.setText("✅ Correct move!")
             self.move_number += 1
+            self.check_for_completion()
             QTimer.singleShot(200, self.engine_turn)
         else:
             self.status_label.setText("❌ Wrong move!")
+            self.mistakes += 1
+            self.mistakes_label.setText(str(self.mistakes))
             self.board_widget.undo_move()
-            
+        
+    def engine_turn(self):
+        """Play the expected move from the current variation."""
+        if not self.variation or not self.opening:
+            return
+        try:
+            expected_uci = self.variation[self.move_number - 1]
+            move = self.board.parse_uci(expected_uci)  # convert to Move
+            print(f'Engine move : {move}')
+            self.play_move_sound(move)
+            self.board_widget.play_move(move)
+            self.move_number += 1
+            self.check_for_completion()
+        except IndexError:
+            self.reset_board()
+
     def show_move(self):
         """
         Reveal the correct move by playing it on the board.
         The hint button is temporarily disabled to prevent spamming.
         """
+        self.mistakes += 1
+        self.status_label.setText("")
+        self.mistakes_label.setText(str(self.mistakes))
         if not self.variation:
             self.status_label.setText("⚠️ Load a PGN file first!")
             return
-        # Disable button and Re-enable button after 1 second
-        self.hint_button.setEnabled(False)
+        
         def safe_unlock():
             # Re-enable the button only if the variation is not yet complete
-            if self.move_number < len(self.variation) and self.hint_button.isEnabled() == False:
+            if self.move_number < len(self.variation) :
                 self.hint_button.setEnabled(True)
                 print(f'move_n : {self.move_number}, taille {len(self.variation)}')
-        QTimer.singleShot(1000, safe_unlock)
+
         try:
+            self.hint_button.setEnabled(False)
             self.engine_turn()
+            if self.variation == None : return
             # If there are still moves left, schedule the next move after animation
             if self.move_number <= len(self.variation):
                 QTimer.singleShot(500, self.engine_turn)
+            QTimer.singleShot(1000, safe_unlock)
         except IndexError:
             pass
-
+            
+    def reset_board(self):
+        """Reset the board to its starting position and play the first engine move if needed."""
+        self.move_number = 1
+        self.board = chess.Board()
+        self.board_widget.set_board(self.board)
+        
+        if self.user_color == "white":
+            self.board_widget.set_flipped(False)
+        else:
+            self.board_widget.set_flipped(True)
+        
+        # If the user plays black, the engine opens with the first move
+        if self.user_color == "black" and self.variation:
+            self.engine_turn()
+        print("Board Reset")
+      
     def check_for_completion(self):
         """
         Check whether the current variation has been completed.
         If so, move to the next variation or end the session if all are done.
         """
-        if self.move_number >= len(self.variation):
+        if self.move_number > len(self.variation):
             self.streak += 1
             if not self.variations:
                 self.status_label.setText("🎉 Training completed!")
-                self.disable_ui_temporarily()
+                self.board_widget.setEnabled(False)
+                self.hint_button.setEnabled(False)
                 self.variation = None # Prevent further interaction until a new PGN is loaded
             else:
                 self.choose_variation()
                 self.status_label.setText("🎉 Line completed!")
-                self.disable_ui_temporarily()
+                self.board_widget.setEnabled(False)
+                self.hint_button.setEnabled(True)
+                self.hint_button.setText("Next variation")
+                self.hint_button.clicked.disconnect()
+                self.hint_button.clicked.connect(self.next_variation)
                 
-        self.progress_label.setText(f"{self.streak}/{self.streak + len(self.variations)}")
+        self.progress_label.setText(f"{self.streak}/{self.total_variations}")
     
-    def disable_ui_temporarily(self):
-        self.hint_button.setEnabled(False)
-        self.board_widget.setEnabled(False)
-        QTimer.singleShot(5000, lambda: self.hint_button.setEnabled(True))
-        QTimer.singleShot(5000, lambda: self.board_widget.setEnabled(True))
-        QTimer.singleShot(5000, self.reset_board)
-
-            
+    def next_variation(self):
+        self.hint_button.setText("Show Move")
+        self.hint_button.clicked.disconnect()
+        self.hint_button.clicked.connect(self.show_move)
+        self.board_widget.setEnabled(True)
+        self.reset_board()
+        
 
 
 if __name__ == "__main__":  
