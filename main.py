@@ -10,7 +10,7 @@ import random
 
 # GUI
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QHBoxLayout, QLabel
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtGui import QAction, QIcon, QGuiApplication, QPalette
 from PySide6.QtCore import QUrl, QTimer
 from PySide6.QtMultimedia import QSoundEffect
 from chess_widgets import BoardWidget
@@ -20,6 +20,7 @@ def resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
+
 
 # MainWindow for GUI
 class MainWindow(QMainWindow):
@@ -40,7 +41,7 @@ class MainWindow(QMainWindow):
         
         # --- Window setup ---
         self.setWindowTitle("Chess Trainer")
-        self.setWindowIcon(QIcon(resource_path("Logos/logo_white.png")))
+        self.setWindowIcon(QIcon(resource_path(self.get_logo_path())))
         self.create_menu()
 
         # --- Layout ---
@@ -94,6 +95,17 @@ class MainWindow(QMainWindow):
                                      font-size: 20px;
                                      color: red;
                                      """)
+    
+    def get_logo_path(self):
+        """Return the appropriate logo based on the OS theme."""
+        palette = QGuiApplication.instance().palette()
+        bg_color = palette.color(QPalette.ColorRole.Window)
+        # If the background is dark, use the white logo
+        if bg_color.lightness() < 128:
+            return resource_path("Logos/logo_white.png")
+        else:
+            return resource_path("Logos/logo_black.png")
+        
     # Menu on top of the App
     def create_menu(self):
         """Build the top menu bar with actions."""
