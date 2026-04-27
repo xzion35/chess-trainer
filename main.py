@@ -1,6 +1,3 @@
-# Chess Trainer - A chess opening trainer
-# Copyright (C) 2026  Dylan Mercier
-
 # Import
 import sys
 import os
@@ -135,7 +132,6 @@ class MainWindow(QMainWindow):
         if file_path:
             with open(file_path) as pgn:
                 try:
-                    print("Loaded PGN:", file_path)
                     self.opening = chess.pgn.read_game(pgn)
                 except:
                     self.status_label.setText("⚠️ Incorect file type")
@@ -145,7 +141,6 @@ class MainWindow(QMainWindow):
             # Determine which side the user plays from the PGN headers
             orientation_tag = self.opening.headers.get("Orientation", "white").lower()
             self.user_color = orientation_tag if orientation_tag in ["white", "black"] else "white"
-            print(f'User color : {self.user_color}')
 
             self.variations = []
             self.mistakes = 0
@@ -174,13 +169,11 @@ class MainWindow(QMainWindow):
             for variation in current_node.variations:
                 move = variation.move
                 stack.append((variation, moves + [move.uci()]))  # store UCI string
-        print(f"{len(self.variations)} variations loaded")
 
     def choose_variation(self):
         """Pick a random variation from the remaining list and remove it to avoid repetition."""
         random_id = random.randrange(len(self.variations))
         self.variation = self.variations.pop(random_id)
-        print("Variation selected")
 
     def on_move_played(self, move: chess.Move, move_info: dict):
         """
@@ -198,12 +191,8 @@ class MainWindow(QMainWindow):
         except IndexError:
             return
 
-        print("Expected Move:", expected_uci)
-        print("User played:", move)
-
         if move.uci() == expected_uci:
             self.play_move_sound(move)
-            print("Correct move pushed")
             self.status_label.setText("✅ Correct move!")
             self.move_number += 1
             self.check_for_completion()
@@ -221,7 +210,6 @@ class MainWindow(QMainWindow):
         try:
             expected_uci = self.variation[self.move_number - 1]
             move = self.board.parse_uci(expected_uci)  # convert to Move
-            print(f'Engine move : {move}')
             self.play_move_sound(move)
             self.board_widget.play_move(move)
             self.move_number += 1
@@ -245,7 +233,6 @@ class MainWindow(QMainWindow):
             # Re-enable the button only if the variation is not yet complete
             if self.move_number < len(self.variation) :
                 self.hint_button.setEnabled(True)
-                print(f'move_n : {self.move_number}, taille {len(self.variation)}')
 
         try:
             self.hint_button.setEnabled(False)
@@ -272,7 +259,6 @@ class MainWindow(QMainWindow):
         # If the user plays black, the engine opens with the first move
         if self.user_color == "black" and self.variation:
             self.engine_turn()
-        print("Board Reset")
       
     def check_for_completion(self):
         """
