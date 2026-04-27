@@ -11,6 +11,7 @@ A desktop application for practicing chess openings using PGN files. The app gui
 - Hint system to reveal the correct move
 - Sound effects for moves and captures
 - Progress tracker showing completed variations
+- Mistakes counter
 
 ## PGN Format
 
